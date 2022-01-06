@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="webgl"></div>
+    <script src="https://cdn.bootcdn.net/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script> -->
+    <script type='module'>
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+        let num = 0.1
+        const scene = new THREE.Scene()
+        /**
+         * 照相机
+         * */ 
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
+        var renderer = new THREE.WebGLRenderer()
+
+        /**
+         * 渲染背景
+         * */ 
+        renderer.setClearColor(0xffffff)
+        renderer.setSize(window.innerWidth, window.innerHeight)
+        var axes = new THREE.AxesHelper(20)
+        // scene.add(axes)
+
+        /**
+         * 环境光
+         * */ 
+        const light = new THREE.AmbientLight(0xffffff); // soft white light
+        scene.add(light);
+
+
+        /**
+         * 加载模型
+         * */ 
+        const loader = new THREE.GLTFLoader();
+        loader.load('./static/model/RobotExpressive.glb', function (gltf) {
+
+            let model = gltf.scene;
+            scene.add(model);
+
+
+        }, undefined, function (e) {
+
+            console.error(e);
+
+        });
+
+
+        /**
+         * 控制器
+         * */ 
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+        controls.update();
+
+
+        camera.position.z = 10;
+        camera.position.y = 20
+        camera.position.x = 5
+        camera.lookAt(0, 0, 0)
+
+        document.getElementById("webgl").append(renderer.domElement)
+
+
+        /**
+         * 渲染
+         * */ 
+        function ani() {
+            requestAnimationFrame(() => {
+                ani()
+                render()
+
+            })
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+        ani()
+
+        /**
+         * 适配
+         * */ 
+        window.addEventListener( 'resize', onWindowResize );
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+
+    </script>
+</body>
+
+</html>
