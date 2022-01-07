@@ -132,10 +132,22 @@
                 manPontorl.left = true;
 
             }
+
+            if (['d', 'ArrowRight'].includes(event.key)) {
+
+                if (!manPontorl.right) {
+                    activeAction = actions['Walking']
+                    console.log('start')
+                    activeAction.play()
+                    move.push('right')
+                }
+                manPontorl.right = true;
+
+            }
         }
         function onDocumentKeyUp(event) {
-
-            console.log(event.key)
+            
+            console.log(move)
             if (['w', 'ArrowUp'].includes(event.key)) {
                 manPontorl.up = false
                 move.splice(move.indexOf('up'), 1)
@@ -154,6 +166,13 @@
 
                 manPontorl.left = false
                 move.splice(move.indexOf('left'), 1)
+                if (move.length == 0) activeAction.stop();
+
+            }
+            if (['d', 'ArrowRight'].includes(event.key)) {
+
+                manPontorl.right = false
+                move.splice(move.indexOf('right'), 1)
                 if (move.length == 0) activeAction.stop();
 
             }
@@ -211,6 +230,9 @@
                 }
                 if (manPontorl.left) {
                     model.rotation.y += 0.1
+                }
+                if (manPontorl.right) {
+                    model.rotation.y -= 0.1
                 }
             })
         }
