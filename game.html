@@ -21,17 +21,21 @@
     <!-- <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script> -->
     <script type='module'>
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+        import { util } from './static/js/util.js'
+
         let num = 0.1
         var MULTIPLIER = 1;
         var SLOW_MOTION = 0.1;
         var FAST_MOTION = 2;
         var mdir = 1;
-        let activeAction, mixer, clock, actions, start, model, cameraControls,moveX = 0,moveZ = 0
+        let activeAction, mixer, clock, actions, start, model, cameraControls, moveX = 0, moveZ = 0
         let manPontorl = {
             up: false,
             down: false,
             left: false,
-            right: false
+            right: false,
+            punch: false,
+            jump: false
         }
         let move = []
         const scene = new THREE.Scene()
@@ -68,7 +72,7 @@
             scene.add(model);
             const animations = gltf.animations
             mixer = new THREE.AnimationMixer(model)
-            console.log(mixer)
+
 
             actions = {}
             /**
@@ -91,64 +95,67 @@
 
         });
 
+        const keyToAction = [
+            {
+                keyCodeArr: ['KeyW', 'ArrowUp'],
+                actionName: 'up',
+                actionState: manPontorl,
+                aniName: 'up'
+            },
+            {
+                keyCodeArr: ['KeyS', 'ArrowDown'],
+                actionName: 'down',
+                actionState: manPontorl,
+                aniName: 'down'
+            },
+            {
+                keyCodeArr: ['KeyA', 'ArrowLeft'],
+                actionName: 'left',
+                actionState: manPontorl,
+                aniName: 'left'
+            },
+            {
+                keyCodeArr: ['KeyD', 'ArrowRight'],
+                actionName: 'right',
+                actionState: manPontorl,
+                aniName: 'right'
+            },
+            {
+                keyCodeArr: ['KeyJ'],
+                actionName: 'punch',
+                actionState: manPontorl,
+                aniName: 'punch'
+            },
+            {
+                keyCodeArr: ['Space'],
+                actionName: 'jump',
+                actionState: manPontorl,
+                aniName: 'jump'
+            },
+        ]
+        const directArr = ['up', 'down', 'left', 'right']
         /**
          * 绑定事件
          * */
         document.addEventListener("keydown", onDocumentKeyDown, false)
         document.addEventListener("keyup", onDocumentKeyUp, false)
         function onDocumentKeyDown(event) {
-            console.log(event.code)
-            if (['KeyW', 'ArrowUp'].includes(event.code)) {
 
-                if (!manPontorl.up) {
-                    activeAction = actions['Walking']
-                    console.log('start')
-                    activeAction.play()
-                    move.push('up')
-                }
-                manPontorl.up = true;
+            keyToAction.forEach((a, index) => {
+                console.log(a.actionState);
+                util.bindAction(a.keyCodeArr, event.code, move, a.actionState, a.actionName, a.aniName)
+            })
 
+            let onlyMove = move.every((a) => directArr.includes(a))
+
+            if (onlyMove) {
+                activeAction = actions['Walking']
+                activeAction.play()
             }
-
-            if (['KeyS', 'ArrowDown'].includes(event.code)) {
-
-                if (!manPontorl.down) {
-                    activeAction = actions['Walking']
-                    console.log('start')
-                    activeAction.play()
-                    move.push('down')
-                }
-                manPontorl.down = true;
-
-            }
-
-            if (['KeyA', 'ArrowLeft'].includes(event.code)) {
-
-                if (!manPontorl.left) {
-                    activeAction = actions['Walking']
-                    console.log('start')
-                    activeAction.play()
-                    move.push('left')
-                }
-                manPontorl.left = true;
-
-            }
-
-            if (['KeyD', 'ArrowRight'].includes(event.code)) {
-
-                if (!manPontorl.right) {
-                    activeAction = actions['Walking']
-                    console.log('start')
-                    activeAction.play()
-                    move.push('right')
-                }
-                manPontorl.right = true;
-
-            }
+            
         }
         function onDocumentKeyUp(event) {
 
-            console.log(move)
             if (['KeyW', 'ArrowUp'].includes(event.code)) {
                 manPontorl.up = false
                 move.splice(move.indexOf('up'), 1)
@@ -239,7 +246,7 @@
 
                 if (mixer) mixer.update(dt);
                 if (manPontorl.up) {
-                    
+
                     moveZ += 0.1 * Math.cos(model.rotation.y)
                     moveX += 0.1 * Math.sin(model.rotation.y)
                     model.position.z = moveZ
