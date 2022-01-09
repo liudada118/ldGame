@@ -20,13 +20,13 @@
     <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/GLTFLoader.js"></script>
     <!-- <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script> -->
     <script type='module'>
-        import { TrackballControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/TrackballControls.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
         let num = 0.1
         var MULTIPLIER = 1;
         var SLOW_MOTION = 0.1;
         var FAST_MOTION = 2;
         var mdir = 1;
-        let activeAction, mixer, clock, actions, start, model
+        let activeAction, mixer, clock, actions, start, model, cameraControls,moveX = 0,moveZ = 0
         let manPontorl = {
             up: false,
             down: false,
@@ -63,6 +63,7 @@
         loader.load('./static/model/RobotExpressive.glb', function (gltf) {
 
             model = gltf.scene;
+
             console.log(gltf.animations)
             scene.add(model);
             const animations = gltf.animations
@@ -96,8 +97,8 @@
         document.addEventListener("keydown", onDocumentKeyDown, false)
         document.addEventListener("keyup", onDocumentKeyUp, false)
         function onDocumentKeyDown(event) {
-            console.log(event.key)
-            if (['w', 'ArrowUp'].includes(event.key)) {
+            console.log(event.code)
+            if (['KeyW', 'ArrowUp'].includes(event.code)) {
 
                 if (!manPontorl.up) {
                     activeAction = actions['Walking']
@@ -109,7 +110,7 @@
 
             }
 
-            if (['s', 'ArrowDown'].includes(event.key)) {
+            if (['KeyS', 'ArrowDown'].includes(event.code)) {
 
                 if (!manPontorl.down) {
                     activeAction = actions['Walking']
@@ -121,7 +122,7 @@
 
             }
 
-            if (['a', 'ArrowLeft'].includes(event.key)) {
+            if (['KeyA', 'ArrowLeft'].includes(event.code)) {
 
                 if (!manPontorl.left) {
                     activeAction = actions['Walking']
@@ -133,7 +134,7 @@
 
             }
 
-            if (['d', 'ArrowRight'].includes(event.key)) {
+            if (['KeyD', 'ArrowRight'].includes(event.code)) {
 
                 if (!manPontorl.right) {
                     activeAction = actions['Walking']
@@ -146,30 +147,30 @@
             }
         }
         function onDocumentKeyUp(event) {
-            
+
             console.log(move)
-            if (['w', 'ArrowUp'].includes(event.key)) {
+            if (['KeyW', 'ArrowUp'].includes(event.code)) {
                 manPontorl.up = false
                 move.splice(move.indexOf('up'), 1)
                 if (move.length == 0) activeAction.stop();
 
             }
 
-            if (['s', 'ArrowDown'].includes(event.key)) {
+            if (['KeyS', 'ArrowDown'].includes(event.code)) {
                 manPontorl.down = false
                 move.splice(move.indexOf('down'), 1)
                 if (move.length == 0) activeAction.stop();
 
             }
 
-            if (['a', 'ArrowLeft'].includes(event.key)) {
+            if (['KeyA', 'ArrowLeft'].includes(event.code)) {
 
                 manPontorl.left = false
                 move.splice(move.indexOf('left'), 1)
                 if (move.length == 0) activeAction.stop();
 
             }
-            if (['d', 'ArrowRight'].includes(event.key)) {
+            if (['KeyD', 'ArrowRight'].includes(event.code)) {
 
                 manPontorl.right = false
                 move.splice(move.indexOf('right'), 1)
@@ -179,29 +180,44 @@
         }
 
         /**
+        * 道路纹理贴图
+        * */
+        const textureLoader = new THREE.TextureLoader()
+        // const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+        const roadTexture = textureLoader.load('./static/img/crate.gif')
+        // roadTexture.anisotropy = maxAnisotropy;
+        roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
+        roadTexture.repeat.set(100, 100);
+        /**
          * 道路构建
          * */
-        const roadGeometry = new THREE.PlaneGeometry(15, 500)
+        const roadGeometry = new THREE.PlaneGeometry(500, 500)
         const roadMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff0000
+            color: 0xff0000,
+            map: roadTexture
         })
         const road = new THREE.Mesh(roadGeometry, roadMaterial)
         road.rotation.x = -Math.PI / 2
         scene.add(road)
 
 
+
         /**
          * 控制器
          * */
 
-        var delta = clock.getDelta();
+        // var delta = clock.getDelta();
 
-        MULTIPLIER = THREE.Math.clamp(MULTIPLIER + 0.5 * delta * mdir, SLOW_MOTION, 1);
+        // MULTIPLIER = THREE.Math.clamp(MULTIPLIER + 0.5 * delta * mdir, SLOW_MOTION, 1);
 
-        delta *= MULTIPLIER;
-        const controls = new TrackballControls(camera, renderer.domElement);
-        // controls.target.set(0, 1, 0);
-        controls.dynamicDampingFactor = 0.25;
+        // delta *= MULTIPLIER;
+        // const controls = new TrackballControls(camera, renderer.domElement);
+        // // controls.target.set(0, 1, 0);
+        // controls.dynamicDampingFactor = 0.25;
+
+        // cameraControls = new OrbitControls(camera, renderer.domElement);
+        // cameraControls.target.set(0, 50, 0);
+        // cameraControls.update();
 
 
         camera.position.z = -10;
@@ -223,23 +239,41 @@
 
                 if (mixer) mixer.update(dt);
                 if (manPontorl.up) {
-                    model.position.z += 0.1
+                    
+                    moveZ += 0.1 * Math.cos(model.rotation.y)
+                    moveX += 0.1 * Math.sin(model.rotation.y)
+                    model.position.z = moveZ
+                    model.position.x = moveX
                 }
                 if (manPontorl.down) {
-                    model.position.z -= 0.1
+                    moveZ -= 0.1 * Math.cos(model.rotation.y)
+                    moveX -= 0.1 * Math.sin(model.rotation.y)
+                    model.position.z = moveZ
+                    model.position.x = moveX
                 }
                 if (manPontorl.left) {
-                    model.rotation.y += 0.1
+                    moveZ -= 0.05 * Math.cos(model.rotation.y)
+                    moveX -= 0.05 * Math.sin(model.rotation.y)
+                    model.rotation.y += 0.05
+                    model.position.z = moveZ
+                    model.position.x = moveX
                 }
                 if (manPontorl.right) {
-                    model.rotation.y -= 0.1
+                    moveZ += 0.05 * Math.cos(model.rotation.y)
+                    moveX += 0.05 * Math.sin(model.rotation.y)
+                    model.rotation.y -= 0.05
+                    model.position.z = moveZ
+                    model.position.x = moveX
                 }
             })
         }
 
         function render() {
             renderer.render(scene, camera);
-            controls.update(delta);
+            // controls.update(delta);
+            camera.position.z = moveZ - 30;
+            camera.position.y = model.position.y + 10
+            camera.position.x = moveX + 0
         }
         ani()
 
