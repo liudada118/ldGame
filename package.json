@@ -1,0 +1,20 @@
+{
+  "name": "ldgame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "1.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liudada118/ldGame.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/liudada118/ldGame/issues"
+  },
+  "homepage": "https://github.com/liudada118/ldGame#readme"
+}
