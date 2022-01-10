@@ -16,11 +16,12 @@
 
 <body>
     <div id="webgl"></div>
-    <script src="https://cdn.bootcdn.net/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script> -->
+    <script src="./static/js/three.js"></script>
     <script type='module'>
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js';
+        
+        import './static/js/GLTFLoader.js'
+        
         import { util } from './static/js/util.js'
 
         let num = 0.1
@@ -28,7 +29,7 @@
         var SLOW_MOTION = 0.1;
         var FAST_MOTION = 2;
         var mdir = 1;
-        let activeAction, mixer, clock, actions, start, model, cameraControls, moveX = 0, moveZ = 0
+        let activeAction, jumpAction, punchAction, mixer, clock, actions, start, model, cameraControls, moveX = 0, moveZ = 0
         let manPontorl = {
             up: false,
             down: false,
@@ -67,13 +68,25 @@
         loader.load('./static/model/RobotExpressive.glb', function (gltf) {
 
             model = gltf.scene;
-
-            console.log(gltf.animations)
             scene.add(model);
             const animations = gltf.animations
             mixer = new THREE.AnimationMixer(model)
+            
 
+            console.log(gltf)
 
+            let skeleton = new THREE.SkeletonHelper(model);
+            skeleton.visible = false;
+            scene.add(skeleton);
+
+            mixer.addEventListener('finished', function (e) {
+                console.log(e)
+                if (e.action._clip.name === 'Jump') {
+                    console.log(111)
+                    // jumpAction.enabled  = true 
+                    console.log(jumpAction)
+                }
+            })
             actions = {}
             /**
              * 初始化动画
@@ -121,7 +134,7 @@
                 aniName: 'right'
             },
             {
-                keyCodeArr: ['KeyJ'],
+                keyCodeArr: ['KeyK'],
                 actionName: 'punch',
                 actionState: manPontorl,
                 aniName: 'punch'
@@ -142,31 +155,52 @@
         function onDocumentKeyDown(event) {
 
             keyToAction.forEach((a, index) => {
-                console.log(a.actionState);
+
                 util.bindAction(a.keyCodeArr, event.code, move, a.actionState, a.actionName, a.aniName)
             })
 
-            let onlyMove = move.every((a) => directArr.includes(a))
 
-            if (onlyMove) {
+
+            if (move.some((a) => directArr.includes(a))) {
                 activeAction = actions['Walking']
                 activeAction.play()
+                activeAction.weight = 1
             }
-            
+
+            if (move.includes('jump')) {
+
+                jumpAction = actions['Jump']
+                jumpAction.enabled = true
+                jumpAction.loop = THREE.LoopRepeat
+                jumpAction.play()
+                // jumpAction.clampWhenFinished = true;
+                // jumpAction.loop = THREE.LoopOnce;
+            }
+
+            if (move.includes('punch')) {
+                console.log(222)
+                punchAction = actions['Punch']
+                punchAction.play()
+                punchAction.clampWhenFinished = true;
+
+                // punchAction.loop = THREE.LoopOnce ;
+
+            }
+            console.log(move)
         }
         function onDocumentKeyUp(event) {
-
+            console.log(move)
             if (['KeyW', 'ArrowUp'].includes(event.code)) {
                 manPontorl.up = false
                 move.splice(move.indexOf('up'), 1)
-                if (move.length == 0) activeAction.stop();
+                if (move.every((a) => !directArr.includes(a))) activeAction.stop();
 
             }
 
             if (['KeyS', 'ArrowDown'].includes(event.code)) {
                 manPontorl.down = false
                 move.splice(move.indexOf('down'), 1)
-                if (move.length == 0) activeAction.stop();
+                if (move.every((a) => !directArr.includes(a))) activeAction.stop();
 
             }
 
@@ -174,17 +208,38 @@
 
                 manPontorl.left = false
                 move.splice(move.indexOf('left'), 1)
-                if (move.length == 0) activeAction.stop();
+                if (move.every((a) => !directArr.includes(a))) activeAction.stop();
 
             }
             if (['KeyD', 'ArrowRight'].includes(event.code)) {
 
                 manPontorl.right = false
                 move.splice(move.indexOf('right'), 1)
-                if (move.length == 0) activeAction.stop();
+                if (move.every((a) => !directArr.includes(a))) activeAction.stop();
 
             }
+
+            if (['KeyK'].includes(event.code)) {
+
+                manPontorl.punch = false
+                move.splice(move.indexOf('KeyK'), 1)
+                // punchAction.stop();
+                // punchAction.loop = THREE.LoopRepeat
+
+            }
+
+            if (['Space'].includes(event.code)) {
+
+                manPontorl.jump = false
+                move.splice(move.indexOf('Space'), 1)
+                // jumpAction.stop();
+
+                // jumpAction.loop = THREE.LoopRepeat
+            }
+
+
         }
+
 
         /**
         * 道路纹理贴图
@@ -242,17 +297,19 @@
             requestAnimationFrame(() => {
                 ani()
                 render()
+
                 const dt = clock.getDelta();
 
                 if (mixer) mixer.update(dt);
                 if (manPontorl.up) {
-
+                    activeAction.timeScale = 1
                     moveZ += 0.1 * Math.cos(model.rotation.y)
                     moveX += 0.1 * Math.sin(model.rotation.y)
                     model.position.z = moveZ
                     model.position.x = moveX
                 }
                 if (manPontorl.down) {
+                    activeAction.timeScale = -1
                     moveZ -= 0.1 * Math.cos(model.rotation.y)
                     moveX -= 0.1 * Math.sin(model.rotation.y)
                     model.position.z = moveZ
@@ -279,7 +336,7 @@
             renderer.render(scene, camera);
             // controls.update(delta);
             camera.position.z = moveZ - 30;
-            camera.position.y = model.position.y + 10
+            camera.position.y = !model ? 0 : model.position.y + 10
             camera.position.x = moveX + 0
         }
         ani()

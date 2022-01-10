@@ -16,6 +16,9 @@ var util = {
             }
             actionObj[aniName] = true
         }
+    },
+    cancel(){
+        
     }
 }
 
