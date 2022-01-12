@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/liudada118/ldGame/issues"
   },
-  "homepage": "https://github.com/liudada118/ldGame#readme"
+  "homepage": "https://github.com/liudada118/ldGame#readme",
+  "dependencies": {
+    "ws": "^8.4.0"
+  }
 }

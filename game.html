@@ -24,13 +24,14 @@
 
         import { util } from './static/js/util.js'
         let model1
+        let model2, mixer2, actions2
         let num = 0.1
         let id
         var MULTIPLIER = 1;
         var SLOW_MOTION = 0.1;
         var FAST_MOTION = 2;
         var mdir = 1;
-        let activeAction, otherActions, otherLoad, jumpAction, punchAction, mixer, mixer1, clock, actions, start, model, cameraControls, moveX = 0, moveZ = 0
+        let activeAction, otherActions, otherLoad, jumpAction, punchAction, mixer, mixer1, clock, actions, start, model, cameraControls, moveX = 0, moveZ = 0, oldManPontorl = {}
         let manPontorl = {
             up: false,
             down: false,
@@ -54,12 +55,18 @@
         renderer.setSize(window.innerWidth, window.innerHeight)
         var axes = new THREE.AxesHelper(20)
         // scene.add(axes)
-
+        const loader = new THREE.GLTFLoader();
+        const loader1 = new THREE.GLTFLoader();
         const ws = new WebSocket('ws://127.0.0.1:8080')
         id = Date.parse(new Date())
         ws.onopen = function () {
             console.log("connect success !!!!");
-            ws.send("HelloWorld");
+            ws.send({
+                id: id,
+                position: { x: 0, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0 },
+                manPontorl,
+            });
         }
 
         ws.onerror = function (err) {
@@ -74,7 +81,7 @@
 
             var blobReader = new Response(data.data).json()
             blobReader.then(res => {
-                console.log(res.id)
+
                 if (!otherLoad) {
                     if (res.id != id) {
                         otherLoad = true
@@ -84,30 +91,21 @@
                             scene.add(model1);
                             const animations = gltf.animations
                             mixer1 = new THREE.AnimationMixer(model1)
+                            model1.name = id
 
 
-                            mixer1.addEventListener('finished', function (e) {
 
-                                if (e.action._clip.name === 'Jump') {
 
-                                    // jumpAction.enabled  = true 
-                                    // console.log(jumpAction)
-                                }
-                            })
                             otherActions = {}
                             /**
                              * 初始化动画
                              * */
                             for (let i = 0; i < animations.length; i++) {
                                 const clip = animations[i]
-                                const action = mixer.clipAction(clip)
+                                const action = mixer1.clipAction(clip)
                                 otherActions[clip.name] = action
-                                // action.clampWhenFinished = true;
-                                // action.loop = THREE.LoopOnce;
+
                             }
-                            // activeAction = actions['Walking']
-                            // console.log(activeAction)
-                            // activeAction.play()
 
                         }, undefined, function (e) {
 
@@ -116,11 +114,42 @@
                         });
                     }
                 }
-                if(model1 && res.id != id){
-                    model1.position.x = res.position.x
-                    model1.position.y = res.position.y
-                    model1.position.z = res.position.z
+                if (res.id != id) {
+                    if (model1) {
+
+                        model1.position.x = res.position.x
+                        model1.position.y = res.position.y
+                        model1.position.z = res.position.z
+
+                        model1.rotation.x = res.rotation._x
+                        model1.rotation.y = res.rotation._y
+                        model1.rotation.z = res.rotation._z
+
+                        if (res.manPontorl.left || res.manPontorl.right || res.manPontorl.up || res.manPontorl.down) {
+
+                            otherActions['Walking'].play();
+                            console.log(otherActions['Walking'])
+                        } else {
+                            console.log('otherstop')
+                            otherActions['Walking'].stop();
+                        }
+
+                        if (res.manPontorl.punch) {
+                            otherActions['Punch'].play();
+                        } else {
+                            otherActions['Punch'].stop();
+                        }
+
+                        if (res.manPontorl.jump) {
+                            otherActions['Jump'].play();
+                        } else {
+                            otherActions['Jump'].stop();
+                        }
+
+                    }
+
                 }
+
             })
             // const wsData = JSON.parse(data.data)
 
@@ -137,29 +166,18 @@
         /**
          * 加载模型
          * */
-        const loader = new THREE.GLTFLoader();
+
         loader.load('./static/model/RobotExpressive.glb', function (gltf) {
 
             model = gltf.scene;
             scene.add(model);
             const animations = gltf.animations
             mixer = new THREE.AnimationMixer(model)
+            model.name = id
 
 
 
 
-            let skeleton = new THREE.SkeletonHelper(model);
-            skeleton.visible = false;
-            scene.add(skeleton);
-
-            mixer.addEventListener('finished', function (e) {
-
-                if (e.action._clip.name === 'Jump') {
-
-                    // jumpAction.enabled  = true 
-                    // console.log(jumpAction)
-                }
-            })
             actions = {}
             /**
              * 初始化动画
@@ -168,18 +186,17 @@
                 const clip = animations[i]
                 const action = mixer.clipAction(clip)
                 actions[clip.name] = action
-                // action.clampWhenFinished = true;
-                // action.loop = THREE.LoopOnce;
+
             }
-            // activeAction = actions['Walking']
-            // console.log(activeAction)
-            // activeAction.play()
+            actions['Walking'].play()
 
         }, undefined, function (e) {
 
             console.error(e);
 
         });
+
+
 
         const keyToAction = [
             {
@@ -237,7 +254,8 @@
             if (move.some((a) => directArr.includes(a))) {
 
                 activeAction = actions['Walking']
-                activeAction.play()
+
+                actions['Walking'].play()
                 activeAction.weight = 1
             }
 
@@ -373,52 +391,83 @@
                 render()
 
                 const dt = clock.getDelta();
-
+                if (mixer2) mixer2.update(dt);
                 if (mixer) mixer.update(dt);
-                if (manPontorl.up) {
-                    activeAction.timeScale = 1
-                    moveZ += 0.1 * Math.cos(model.rotation.y)
-                    moveX += 0.1 * Math.sin(model.rotation.y)
-                    model.position.z = moveZ
-                    model.position.x = moveX
-                    ws.send(JSON.stringify({
-                        id: id,
-                        position: model.position
-                    }))
+                if (mixer1) mixer1.update(dt);
+                if (manPontorl.punch) {
+
                 }
-                if (manPontorl.down) {
-                    activeAction.timeScale = -1
-                    moveZ -= 0.1 * Math.cos(model.rotation.y)
-                    moveX -= 0.1 * Math.sin(model.rotation.y)
-                    model.position.z = moveZ
-                    model.position.x = moveX
-                    ws.send(JSON.stringify({
-                        id: id,
-                        position: model.position
-                    }))
+                if (model) {
+                    if (JSON.stringify(oldManPontorl) !== JSON.stringify(manPontorl)) {
+
+                        ws.send(JSON.stringify({
+                            id: id,
+                            position: model.position,
+                            rotation: model.rotation,
+                            manPontorl
+                        }))
+                    }
+
+
+
+                    if (manPontorl.up) {
+                        activeAction.timeScale = 1
+                        moveZ += 0.1 * Math.cos(model.rotation.y)
+                        moveX += 0.1 * Math.sin(model.rotation.y)
+                        model.position.z = moveZ
+                        model.position.x = moveX
+                        ws.send(JSON.stringify({
+                            id: id,
+                            position: model.position,
+                            rotation: model.rotation,
+                            manPontorl
+                        }))
+
+                    }
+                    if (manPontorl.down) {
+                        activeAction.timeScale = -1
+                        moveZ -= 0.1 * Math.cos(model.rotation.y)
+                        moveX -= 0.1 * Math.sin(model.rotation.y)
+                        model.position.z = moveZ
+                        model.position.x = moveX
+                        ws.send(JSON.stringify({
+                            id: id,
+                            position: model.position,
+                            rotation: model.rotation,
+                            manPontorl
+                        }))
+
+                    }
+                    if (manPontorl.left) {
+                        moveZ -= 0.05 * Math.cos(model.rotation.y)
+                        moveX -= 0.05 * Math.sin(model.rotation.y)
+                        model.rotation.y += 0.05
+                        model.position.z = moveZ
+                        model.position.x = moveX
+                        ws.send(JSON.stringify({
+                            id: id,
+                            position: model.position,
+                            rotation: model.rotation,
+                            manPontorl
+                        }))
+
+                    }
+                    if (manPontorl.right) {
+                        moveZ += 0.05 * Math.cos(model.rotation.y)
+                        moveX += 0.05 * Math.sin(model.rotation.y)
+                        model.rotation.y -= 0.05
+                        model.position.z = moveZ
+                        model.position.x = moveX
+                        ws.send(JSON.stringify({
+                            id: id,
+                            position: model.position,
+                            rotation: model.rotation,
+                            manPontorl
+                        }))
+
+                    }
                 }
-                if (manPontorl.left) {
-                    moveZ -= 0.05 * Math.cos(model.rotation.y)
-                    moveX -= 0.05 * Math.sin(model.rotation.y)
-                    model.rotation.y += 0.05
-                    model.position.z = moveZ
-                    model.position.x = moveX
-                    ws.send(JSON.stringify({
-                        id: id,
-                        position: model.position
-                    }))
-                }
-                if (manPontorl.right) {
-                    moveZ += 0.05 * Math.cos(model.rotation.y)
-                    moveX += 0.05 * Math.sin(model.rotation.y)
-                    model.rotation.y -= 0.05
-                    model.position.z = moveZ
-                    model.position.x = moveX
-                    ws.send(JSON.stringify({
-                        id: id,
-                        position: model.position
-                    }))
-                }
+                oldManPontorl = { ...manPontorl }
             })
         }
 
@@ -428,6 +477,7 @@
             camera.position.z = moveZ - 30;
             camera.position.y = !model ? 0 : model.position.y + 10
             camera.position.x = moveX + 0
+
         }
         ani()
 
